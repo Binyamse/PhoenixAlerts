@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-alert-manager
+  namespace: monitoring
+spec:
+  selector:
+    app: ai-alert-manager
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: ClusterIP

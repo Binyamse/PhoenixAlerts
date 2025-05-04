@@ -1,0 +1,128 @@
+# docker-compose.dev.yml
+version: '3.8'
+
+services:
+  # MongoDB database
+  mongodb:
+    image: mongo:6
+    container_name: ai-alert-manager-mongodb-dev
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+    networks:
+      - ai-alert-network
+
+  # MongoDB GUI (optional)
+  mongo-express:
+    image: mongo-express
+    container_name: ai-alert-manager-mongo-express-dev
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=rootpassword
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+    depends_on:
+      - mongodb
+    networks:
+      - ai-alert-network
+
+  # Backend server (API only, no static file serving in dev mode)
+  backend:
+    image: node:18
+    container_name: ai-alert-manager-backend-dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    volumes:
+      - .:/app
+      - backend_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+      - "9229:9229" # For Node.js debugging
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://root:rootpassword@mongodb:27017/alert-manager?authSource=admin
+      - LLM_PROVIDER=${LLM_PROVIDER:-none}
+      - OLLAMA_ENDPOINT=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - PORT=3000
+      # Important: Disable static file serving in dev mode
+      - SERVE_STATIC=false
+    depends_on:
+      - mongodb
+    networks:
+      - ai-alert-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # React frontend in development mode (hot reloading)
+  frontend:
+    image: node:18
+    container_name: ai-alert-manager-frontend-dev
+    working_dir: /app/client
+    command: sh -c "npm install && npm start"
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/client/node_modules
+    ports:
+      - "3001:3000" # Map to a different port to avoid conflict
+    environment:
+      - REACT_APP_API_URL=http://localhost:3000/api
+      - NODE_ENV=development
+      - WDS_SOCKET_PORT=3001 # WebpackDevServer needs this for hot reloading
+    depends_on:
+      - backend
+    networks:
+      - ai-alert-network
+
+  # Prometheus (for development/testing)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-alert-manager-prometheus-dev
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - ai-alert-network
+
+  # Alert Manager (for development/testing)
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: ai-alert-manager-alertmanager-dev
+    restart: always
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - ai-alert-network
+
+volumes:
+  mongodb_data:
+  prometheus_data:
+  backend_node_modules:
+  frontend_node_modules:
+
+networks:
+  ai-alert-network:
+    driver: bridge

@@ -1,0 +1,11 @@
+groups:
+  - name: example
+    rules:
+      - alert: HighCPULoad
+        expr: node_load1 > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU load (instance {{ $labels.instance }})"
+          description: "CPU load is > 0.5\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"

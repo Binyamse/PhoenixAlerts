@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-alert-manager
+  namespace: monitoring
+  labels:
+    app: ai-alert-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-alert-manager
+  template:
+    metadata:
+      labels:
+        app: ai-alert-manager
+    spec:
+      containers:
+      - name: ai-alert-manager
+        image: ai-alert-manager:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: ai-alert-manager-secrets
+              key: mongodb-uri
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-alert-manager-secrets
+              key: openai-api-key
+        - name: SLACK_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: ai-alert-manager-secrets
+              key: slack-webhook-url
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"

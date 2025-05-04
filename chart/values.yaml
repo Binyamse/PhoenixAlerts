@@ -1,0 +1,89 @@
+# Default values for AI Alert Manager
+replicaCount: 1
+
+image:
+  repository: your-registry/ai-alert-manager
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: ai-alert-manager.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Application specific configurations
+config:
+  mongo:
+    uri: "mongodb://mongodb:27017/alert-manager"
+    username: "root"
+    passwordSecretName: "mongodb-password"
+    passwordSecretKey: "password"
+  
+  llm:
+    provider: "ollama"
+    endpoint: "http://ollama-service:11434"
+    model: "llama3"
+    apiKeySecretName: ""
+    apiKeySecretKey: ""
+  
+  slack:
+    enabled: true
+    webhookSecretName: "slack-webhook"
+    webhookSecretKey: "url"
+
+# MongoDB dependency
+mongodb:
+  enabled: true
+  auth:
+    rootPassword: "rootpassword"
+  persistence:
+    enabled: true
+    size: 8Gi
+
+# Prometheus and Alert Manager
+prometheus:
+  enabled: true
+  alertmanager:
+    enabled: true
+    configMapName: "alertmanager-config"
