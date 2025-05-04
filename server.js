@@ -6,20 +6,24 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const path = require('path');
-const alertRoutes = require('./routes/alertRoutes');
-const LLMService = require('./services/llmService');
-const llmConfig = require('./config/llm-config');
-const { processAlerts } = require('./services/alertProcessor'); // Import alert processor
 
 // Load environment variables
 dotenv.config();
 
+// Create Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+
+// Import services and routes
+const alertRoutes = require('./routes/alertRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const LLMService = require('./services/llmService');
+const llmConfig = require('./config/llm-config');
+const { processAlerts } = require('./services/alertProcessor');
 
 // Initialize LLM service based on provider
 const llmProvider = process.env.LLM_PROVIDER || llmConfig.defaultProvider;
@@ -39,8 +43,62 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/alert-man
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// Routes
+// API Routes
 app.use('/api/alerts', alertRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+// Add stats routes for the dashboard
+app.get('/api/alerts/stats/total', async (req, res) => {
+  try {
+    const Alert = require('./models/alert');
+    const count = await Alert.countDocuments();
+    res.json({ count });
+  } catch (error) {
+    console.error('Error fetching total alert stats:', error);
+    res.status(500).json({ message: 'Error fetching alert stats' });
+  }
+});
+
+app.get('/api/alerts/stats/critical', async (req, res) => {
+  try {
+    const Alert = require('./models/alert');
+    const count = await Alert.countDocuments({ 
+      $or: [
+        { severity: 'critical' },
+        { 'labels.severity': 'critical' }
+      ] 
+    });
+    res.json({ count });
+  } catch (error) {
+    console.error('Error fetching critical alert stats:', error);
+    res.status(500).json({ message: 'Error fetching alert stats' });
+  }
+});
+
+app.get('/api/alerts/stats/active', async (req, res) => {
+  try {
+    const Alert = require('./models/alert');
+    const count = await Alert.countDocuments({ 
+      status: 'firing',
+      silenced: false
+    });
+    res.json({ count });
+  } catch (error) {
+    console.error('Error fetching active alert stats:', error);
+    res.status(500).json({ message: 'Error fetching alert stats' });
+  }
+});
+
+app.get('/api/alerts/stats/silenced', async (req, res) => {
+  try {
+    const Alert = require('./models/alert');
+    const count = await Alert.countDocuments({ silenced: true });
+    res.json({ count });
+  } catch (error) {
+    console.error('Error fetching silenced alert stats:', error);
+    res.status(500).json({ message: 'Error fetching alert stats' });
+  }
+});
 
 // Webhook endpoint for Prometheus Alert Manager
 app.post('/webhook', async (req, res) => {
