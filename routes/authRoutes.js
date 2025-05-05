@@ -1,3 +1,4 @@
+// routes/authRoutes.js
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
@@ -74,7 +75,7 @@ router.post('/login', async (req, res) => {
     // Generate token
     const token = jwt.sign(
       { id: user._id, username: user.username, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'your-default-secret-key',
       { expiresIn: '1d' }
     );
     

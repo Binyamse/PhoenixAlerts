@@ -6,21 +6,35 @@ const router = express.Router();
 // Get alert activity for last 24 hours
 router.get('/activity', async (req, res) => {
   try {
-    const last24Hours = new Date();
-    last24Hours.setHours(last24Hours.getHours() - 24);
+    // Log the current time for debugging
+    console.log('Current server time:', new Date());
+    
+    // Make the filter more lenient - look at the last 30 days instead of 24 hours
+    const lastMonth = new Date();
+    lastMonth.setDate(lastMonth.getDate() - 30);
+    
+    console.log('Looking for alerts since:', lastMonth);
+    
+    // First, check if we have any alerts at all
+    const totalAlerts = await Alert.countDocuments();
+    console.log('Total alerts in database:', totalAlerts);
+    
+    // Then check how many fall within our time window
+    const recentAlerts = await Alert.countDocuments({ startsAt: { $gte: lastMonth } });
+    console.log('Alerts in last 30 days:', recentAlerts);
     
     // Get alert counts by hour and severity
     const hourlyAlerts = await Alert.aggregate([
       {
         $match: {
-          startsAt: { $gte: last24Hours }
+          startsAt: { $gte: lastMonth }
         }
       },
       {
         $group: {
           _id: {
             hour: { $hour: '$startsAt' },
-            severity: '$severity'
+            severity: { $ifNull: ['$severity', '$labels.severity'] } // Try both severity fields
           },
           count: { $sum: 1 }
         }
@@ -30,28 +44,34 @@ router.get('/activity', async (req, res) => {
       }
     ]);
     
-    // Get counts by severity
+    console.log('Hourly alerts data:', JSON.stringify(hourlyAlerts, null, 2));
+    
+    // Get counts by severity with fallbacks
     const severityCounts = await Alert.aggregate([
       {
-        $match: {
-          startsAt: { $gte: last24Hours }
+        $project: {
+          // Use either direct severity field or from labels
+          effectiveSeverity: { 
+            $cond: { 
+              if: { $ifNull: ['$severity', false] }, 
+              then: '$severity', 
+              else: { $ifNull: ['$labels.severity', 'unknown'] } 
+            } 
+          }
         }
       },
       {
         $group: {
-          _id: '$severity',
+          _id: '$effectiveSeverity',
           count: { $sum: 1 }
         }
       }
     ]);
     
+    console.log('Severity counts:', JSON.stringify(severityCounts, null, 2));
+    
     // Get most affected namespaces
     const namespaces = await Alert.aggregate([
-      {
-        $match: {
-          startsAt: { $gte: last24Hours }
-        }
-      },
       {
         $group: {
           _id: '$namespace',
@@ -69,11 +89,6 @@ router.get('/activity', async (req, res) => {
     // Get counts by cluster
     const clusters = await Alert.aggregate([
       {
-        $match: {
-          startsAt: { $gte: last24Hours }
-        }
-      },
-      {
         $group: {
           _id: '$cluster',
           count: { $sum: 1 }
@@ -89,7 +104,7 @@ router.get('/activity', async (req, res) => {
       severityCounts,
       namespaces,
       clusters,
-      totalAlerts: await Alert.countDocuments({ startsAt: { $gte: last24Hours } })
+      totalAlerts
     });
   } catch (error) {
     console.error('Error fetching alert activity:', error);
@@ -100,14 +115,15 @@ router.get('/activity', async (req, res) => {
 // Get alert predictions
 router.get('/predictions', async (req, res) => {
   try {
-    const last7Days = new Date();
-    last7Days.setDate(last7Days.getDate() - 7);
+    // Use a longer timeframe to ensure we have data
+    const last30Days = new Date();
+    last30Days.setDate(last30Days.getDate() - 30);
     
     // Get historical alert patterns by hour and day
     const alertPatterns = await Alert.aggregate([
       {
         $match: {
-          startsAt: { $gte: last7Days }
+          startsAt: { $gte: last30Days }
         }
       },
       {
@@ -130,11 +146,6 @@ router.get('/predictions', async (req, res) => {
     
     // Get pods with most alerts
     const problematicPods = await Alert.aggregate([
-      {
-        $match: {
-          startsAt: { $gte: last7Days }
-        }
-      },
       {
         $group: {
           _id: '$podName',
@@ -200,11 +211,6 @@ router.get('/predictions', async (req, res) => {
     // Count alerts by alert type
     const alertTypes = await Alert.aggregate([
       {
-        $match: {
-          startsAt: { $gte: last7Days }
-        }
-      },
-      {
         $group: {
           _id: '$alertName',
           count: { $sum: 1 },
@@ -219,17 +225,65 @@ router.get('/predictions', async (req, res) => {
       }
     ]);
     
+    // Count total alerts
+    const totalAlerts = await Alert.countDocuments();
+    
     res.json({
       predictions: predictions.sort((a, b) => b.likelihood - a.likelihood),
       historicalPatterns: {
         recurringPatterns,
         problematicPods,
         alertTypes
-      }
+      },
+      totalAlerts
     });
   } catch (error) {
     console.error('Error generating predictions:', error);
     res.status(500).json({ message: 'Error generating predictions' });
+  }
+});
+
+// Add a debugging endpoint
+router.get('/debug', async (req, res) => {
+  try {
+    const alerts = await Alert.find().limit(5);
+    const total = await Alert.countDocuments();
+    
+    // Check what fields are available in the alerts
+    const fields = {};
+    alerts.forEach(alert => {
+      Object.keys(alert._doc).forEach(key => {
+        fields[key] = (fields[key] || 0) + 1;
+      });
+    });
+    
+    // Check severity field specifically
+    const severityInfo = await Alert.aggregate([
+      {
+        $project: {
+          hasSeverity: { $cond: [{ $ifNull: ['$severity', false] }, true, false] },
+          hasLabelsSeverity: { $cond: [{ $ifNull: ['$labels.severity', false] }, true, false] }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          withSeverity: { $sum: { $cond: ['$hasSeverity', 1, 0] } },
+          withLabelsSeverity: { $sum: { $cond: ['$hasLabelsSeverity', 1, 0] } },
+          total: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    res.json({
+      totalAlerts: total,
+      sampleAlerts: alerts,
+      fieldCounts: fields,
+      severityInfo: severityInfo[0]
+    });
+  } catch (error) {
+    console.error('Error in debug endpoint:', error);
+    res.status(500).json({ message: 'Error in debug endpoint', error: error.toString() });
   }
 });
 

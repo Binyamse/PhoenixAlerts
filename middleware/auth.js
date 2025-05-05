@@ -1,16 +1,19 @@
+// middleware/auth.js - JWT authentication without cookie-parser
 const jwt = require('jsonwebtoken');
 
 const authMiddleware = (req, res, next) => {
   try {
-    // Get token from cookies or Authorization header
-    const token = req.cookies.token || req.header('Authorization')?.replace('Bearer ', '');
+    // Get token from Authorization header only
+    const authHeader = req.header('Authorization');
     
-    if (!token) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'Authentication required' });
     }
     
+    const token = authHeader.replace('Bearer ', '');
+    
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-default-secret-key');
     req.user = decoded;
     next();
   } catch (error) {

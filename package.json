@@ -9,6 +9,7 @@
       "build": "cd client && npm install && npm run build",
       "test": "jest",
       "client": "cd client && npm start",
+      "create-admin": "node scripts/createAdmin.js",
       "dev:all": "concurrently \"npm run dev\" \"npm run client\""
     },
     "dependencies": {
@@ -20,7 +21,10 @@
       "mongoose": "^8.0.0",
       "morgan": "^1.10.0", 
       "openai": "^4.0.0",
-      "winston": "^3.11.0"
+      "winston": "^3.11.0",
+      "cookie-parser": "^1.4.6",
+      "jsonwebtoken": "^9.0.0",
+      "bcrypt": "^5.1.0"
     },
     "devDependencies": {
       "concurrently": "^8.2.2",

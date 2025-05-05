@@ -1,5 +1,10 @@
-const mongoose = require('mongoose');
+// models/user.js - Check for existing mongoose import
+// Remove this line if mongoose is already imported elsewhere
+// const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+
+// Check if mongoose.Schema is available, if not require mongoose
+const mongoose = global.mongoose || require('mongoose');
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -41,5 +46,6 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = mongoose.model('User', userSchema);
+// Check if User model already exists to avoid overwriting
+const User = mongoose.models.User || mongoose.model('User', userSchema);
 module.exports = User;

@@ -1,33 +1,51 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ChakraProvider, CSSReset, Box } from '@chakra-ui/react';
-import Navbar from './components/Navbar';
-import Dashboard from './pages/Dashboard';
-import AlertsList from './pages/AlertsList';
-import AlertDetail from './pages/AlertDetail';
-import Settings from './pages/Settings';
-import Predictions from './pages/Predictions';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ChakraProvider } from '@chakra-ui/react';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
-function App() {
+// Pages
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import AlertDetail from './pages/AlertDetail';
+import AlertList from './pages/AlertList';
+import Settings from './pages/Settings';
+
+// Layout components
+import Layout from './components/Layout';
+
+const App = () => {
   return (
     <ChakraProvider>
-      <CSSReset />
-      <Router>
-        <Box minH="100vh" bg="gray.50">
-          <Navbar />
-          <Box as="main" p={4}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/alerts" element={<AlertsList />} />
-              <Route path="/alerts/:id" element={<AlertDetail />} />
-              <Route path="/predictions" element={<Predictions />} />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </Box>
-        </Box>
-      </Router>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            
+            {/* Protected Routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }>
+              {/* Dashboard as default */}
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              
+              {/* Main routes */}
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="alerts" element={<AlertList />} />
+              <Route path="alerts/:id" element={<AlertDetail />} />
+              <Route path="settings" element={<Settings />} />
+              
+              {/* Fallback for unknown routes */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Route>
+          </Routes>
+        </Router>
+      </AuthProvider>
     </ChakraProvider>
   );
-}
+};
 
 export default App;
