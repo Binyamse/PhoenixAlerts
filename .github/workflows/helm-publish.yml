@@ -6,6 +6,8 @@ on:
     paths:
       - 'charts/**'
       - '.github/workflows/helm-release.yml'
+  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   release:
