@@ -63,7 +63,7 @@ jobs:
       - name: Build and push Backend Docker image
         uses: docker/build-push-action@v4
         with:
-          context: ./backend
+          context: .
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
@@ -73,7 +73,7 @@ jobs:
       - name: Build and push Frontend Docker image
         uses: docker/build-push-action@v4
         with:
-          context: ./frontend
+          context: /client
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}

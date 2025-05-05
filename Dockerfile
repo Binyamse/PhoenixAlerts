@@ -1,53 +1,61 @@
-# First stage: build
-FROM node:18-alpine as builder
+# Build stage
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Copy package files and install dependencies
-COPY package.json ./
-RUN npm install
-# Install authentication dependencies at build time
-RUN npm install --save bcrypt jsonwebtoken
+# Copy package.json and package-lock.json
+COPY package*.json ./
 
-# Copy client package files and install dependencies
-COPY client/package.json ./client/
-RUN cd client && npm install
+# Install dependencies
+RUN npm ci --only=production
 
 # Copy source code
 COPY . .
 
-# Build the React frontend
-RUN cd client && npm run build
+# Build the application (if needed)
+RUN npm run build
 
-# Second stage: runtime
+# Production stage
 FROM node:18-alpine
 
+# Set node environment to production
+ENV NODE_ENV=production
+
+# Create app directory
 WORKDIR /app
 
-# Copy package files
-COPY package.json ./
-RUN npm install --production
+# Install tini for proper signal handling
+RUN apk add --no-cache tini
 
-# Copy built frontend from builder stage
-COPY --from=builder /app/client/build ./client/build
+# Create non-root user
+RUN addgroup -g 1001 nodejs && \
+    adduser -S -u 1001 -G nodejs nodejs
 
-# Copy server files
-COPY --from=builder /app/models ./models
-COPY --from=builder /app/services ./services
-COPY --from=builder /app/routes ./routes
-COPY --from=builder /app/config ./config
-COPY --from=builder /app/server.js ./
+# Copy from build stage
+COPY --from=build --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nodejs:nodejs /app/package*.json ./
+COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=build --chown=nodejs:nodejs /app/src ./src
 
-# Create middleware directory and copy auth middleware
-RUN mkdir -p middleware
-COPY --from=builder /app/middleware ./middleware
+# Set proper permissions
+RUN chown -R nodejs:nodejs /app
 
-# Create scripts directory and copy admin creation script
-RUN mkdir -p scripts
-COPY --from=builder /app/scripts ./scripts
+# Switch to non-root user
+USER nodejs
 
-# Expose the port
-EXPOSE 3000
+# Required environment variables
+ENV PORT=3000
+ENV LOG_LEVEL=info
+ENV MONGODB_URI=mongodb://user:pass@mongodb:27017/alerts
+# Other variables will be passed via Kubernetes secrets
 
-# Start the application
-CMD ["node", "server.js"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD wget -q -O - http://localhost:$PORT/health || exit 1
+
+# Expose port
+EXPOSE $PORT
+
+# Run the application with tini for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/server.js"]

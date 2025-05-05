@@ -20,7 +20,7 @@ services:
   ai-alert-manager:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     container_name: ai-alert-manager-app
     restart: always
     ports:
@@ -43,63 +43,63 @@ services:
     networks:
       - ai-alert-network
 
-  # Ollama - Local LLM service
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   container_name: ai-alert-manager-ollama
-  #   restart: always
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
-  #   networks:
-  #     - ai-alert-network
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: all
-  #             capabilities: [gpu]
+  #Ollama - Local LLM service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-alert-manager-ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai-alert-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
-  # Prometheus (for development/testing)
-  # prometheus:
-  #   image: prom/prometheus:latest
-  #   container_name: ai-alert-manager-prometheus
-  #   restart: always
-  #   ports:
-  #     - "9090:9090"
-  #   volumes:
-  #     - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-  #     - prometheus_data:/prometheus
-  #   command:
-  #     - '--config.file=/etc/prometheus/prometheus.yml'
-  #     - '--storage.tsdb.path=/prometheus'
-  #     - '--web.console.libraries=/etc/prometheus/console_libraries'
-  #     - '--web.console.templates=/etc/prometheus/consoles'
-  #     - '--web.enable-lifecycle'
-  #   networks:
-  #     - ai-alert-network
+  #Prometheus (for development/testing)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-alert-manager-prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - ai-alert-network
 
-  # # Alert Manager (for development/testing)
-  # alertmanager:
-  #   image: prom/alertmanager:latest
-  #   container_name: ai-alert-manager-alertmanager
-  #   restart: always
-  #   ports:
-  #     - "9093:9093"
-  #   volumes:
-  #     - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-  #   command:
-  #     - '--config.file=/etc/alertmanager/alertmanager.yml'
-  #     - '--storage.path=/alertmanager'
-  #   networks:
-  #     - ai-alert-network
+  # Alert Manager (for development/testing)
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: ai-alert-manager-alertmanager
+    restart: always
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - ai-alert-network
 
 volumes:
   mongodb_data:
-  #prometheus_data:
-  #ollama_data:
+  prometheus_data:
+  ollama_data:
 
 networks:
   ai-alert-network:
