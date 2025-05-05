@@ -39,11 +39,11 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - mongodb
-     # - ollama
+      - ollama
     networks:
       - ai-alert-network
 
-  #Ollama - Local LLM service
+  #Ollama - Local LLM service (CPU only)
   ollama:
     image: ollama/ollama:latest
     container_name: ai-alert-manager-ollama
@@ -54,13 +54,10 @@ services:
       - ollama_data:/root/.ollama
     networks:
       - ai-alert-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      # Uncomment to set specific thread count for CPU
+      # - OLLAMA_NUM_THREADS=4
 
   #Prometheus (for development/testing)
   prometheus:
