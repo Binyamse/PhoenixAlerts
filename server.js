@@ -1,5 +1,4 @@
-// server.js - Main Express application
-
+// server.js - Express application with JWT authentication (no cookie-parser)
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -14,16 +13,26 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Initialize JWT secret
+const JWT_SECRET = process.env.JWT_SECRET || 'phoenix-alerts-default-secret-key';
+// Make it available to other modules
+process.env.JWT_SECRET = JWT_SECRET;
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Import services and routes
+// Import routes after middleware setup
 const alertRoutes = require('./routes/alertRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const LLMService = require('./services/llmService');
 const llmConfig = require('./config/llm-config');
 const { processAlerts } = require('./services/alertProcessor');
+
+// Create auth routes - require here to avoid circular dependencies
+// These must be required after the JWT_SECRET is set
+const authRoutes = require('./routes/authRoutes');
+const authMiddleware = require('./middleware/auth');
 
 // Initialize LLM service based on provider
 const llmProvider = process.env.LLM_PROVIDER || llmConfig.defaultProvider;
@@ -43,12 +52,15 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/alert-man
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// API Routes
-app.use('/api/alerts', alertRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+// Authentication routes - no auth required for these
+app.use('/api/auth', authRoutes);
 
-// Add stats routes for the dashboard
-app.get('/api/alerts/stats/total', async (req, res) => {
+// Protected API routes
+app.use('/api/alerts', authMiddleware, alertRoutes);
+app.use('/api/dashboard', authMiddleware, dashboardRoutes);
+
+// Add stats routes for the dashboard (protected)
+app.get('/api/alerts/stats/total', authMiddleware, async (req, res) => {
   try {
     const Alert = require('./models/alert');
     const count = await Alert.countDocuments();
@@ -59,7 +71,7 @@ app.get('/api/alerts/stats/total', async (req, res) => {
   }
 });
 
-app.get('/api/alerts/stats/critical', async (req, res) => {
+app.get('/api/alerts/stats/critical', authMiddleware, async (req, res) => {
   try {
     const Alert = require('./models/alert');
     const count = await Alert.countDocuments({ 
@@ -75,7 +87,7 @@ app.get('/api/alerts/stats/critical', async (req, res) => {
   }
 });
 
-app.get('/api/alerts/stats/active', async (req, res) => {
+app.get('/api/alerts/stats/active', authMiddleware, async (req, res) => {
   try {
     const Alert = require('./models/alert');
     const count = await Alert.countDocuments({ 
@@ -89,7 +101,7 @@ app.get('/api/alerts/stats/active', async (req, res) => {
   }
 });
 
-app.get('/api/alerts/stats/silenced', async (req, res) => {
+app.get('/api/alerts/stats/silenced', authMiddleware, async (req, res) => {
   try {
     const Alert = require('./models/alert');
     const count = await Alert.countDocuments({ silenced: true });
@@ -100,7 +112,7 @@ app.get('/api/alerts/stats/silenced', async (req, res) => {
   }
 });
 
-// Webhook endpoint for Prometheus Alert Manager
+// Webhook endpoint for Prometheus Alert Manager (not protected)
 app.post('/webhook', async (req, res) => {
   try {
     console.log('Webhook received at:', new Date().toISOString());
@@ -116,7 +128,6 @@ app.post('/webhook', async (req, res) => {
     
     try {
       // Process alerts using the dedicated alert processor service
-      // This will handle analysis, database saving, and notifications
       await processAlerts(alerts);
       console.log('All alerts processed successfully via alert processor');
     } catch (processingError) {
@@ -134,8 +145,8 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// API endpoint to test alert creation
-app.get('/api/test-alert', async (req, res) => {
+// API endpoint to test alert creation (protected)
+app.get('/api/test-alert', authMiddleware, async (req, res) => {
   try {
     const Alert = require('./models/alert');
     
