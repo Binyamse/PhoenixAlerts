@@ -10,6 +10,9 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # This permission is required to create releases
+      packages: write  # This is needed if you're also pushing to GHCR
     steps:
       - name: Checkout
         uses: actions/checkout@v3

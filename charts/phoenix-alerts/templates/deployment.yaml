@@ -70,49 +70,105 @@ spec:
             - name: LLM_MODEL
               value: "{{ index .Values.llm.models .Values.llm.provider "default" }}"
             {{- end }}
+            
+            # MongoDB URI
             - name: MONGODB_URI
               valueFrom:
                 secretKeyRef:
+                  {{- if and .Values.secrets.useExisting .Values.secrets.existingSecrets.mongodb }}
+                  name: {{ .Values.secrets.existingSecrets.mongodb }}
+                  key: mongodb-uri
+                  {{- else if .Values.mongodb.enabled }}
                   name: {{ include "phoenix-alerts.fullname" . }}
                   key: mongodb-uri
+                  {{- else }}
+                  name: {{ include "phoenix-alerts.fullname" . }}
+                  key: mongodb-uri
+                  {{- end }}
+            
+            # OpenAI API Key
             {{- if eq .Values.llm.provider "openai" }}
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
+                  {{- if and .Values.secrets.useExisting .Values.secrets.existingSecrets.openAi }}
+                  name: {{ .Values.secrets.existingSecrets.openAi }}
+                  key: api-key
+                  {{- else }}
                   name: {{ include "phoenix-alerts.fullname" . }}
                   key: openai-api-key
-            {{- else if eq .Values.llm.provider "anthropic" }}
+                  {{- end }}
+            {{- end }}
+            
+            # Anthropic API Key
+            {{- if eq .Values.llm.provider "anthropic" }}
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
+                  {{- if and .Values.secrets.useExisting .Values.secrets.existingSecrets.anthropic }}
+                  name: {{ .Values.secrets.existingSecrets.anthropic }}
+                  key: api-key
+                  {{- else }}
                   name: {{ include "phoenix-alerts.fullname" . }}
                   key: anthropic-api-key
-            {{- else if eq .Values.llm.provider "azure" }}
+                  {{- end }}
+            {{- end }}
+            
+            # Azure OpenAI API Key and Endpoint
+            {{- if eq .Values.llm.provider "azure" }}
             - name: AZURE_OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
+                  {{- if and .Values.secrets.useExisting .Values.secrets.existingSecrets.azureOpenAi }}
+                  name: {{ .Values.secrets.existingSecrets.azureOpenAi }}
+                  key: api-key
+                  {{- else }}
                   name: {{ include "phoenix-alerts.fullname" . }}
                   key: azure-openai-api-key
+                  {{- end }}
             - name: AZURE_OPENAI_ENDPOINT
               valueFrom:
                 secretKeyRef:
+                  {{- if and .Values.secrets.useExisting .Values.secrets.existingSecrets.azureOpenAi }}
+                  name: {{ .Values.secrets.existingSecrets.azureOpenAi }}
+                  key: endpoint
+                  {{- else }}
                   name: {{ include "phoenix-alerts.fullname" . }}
                   key: azure-openai-endpoint
-            {{- else if eq .Values.llm.provider "huggingface" }}
+                  {{- end }}
+            {{- end }}
+            
+            # Hugging Face API Key
+            {{- if eq .Values.llm.provider "huggingface" }}
             - name: HUGGINGFACE_API_KEY
               valueFrom:
                 secretKeyRef:
+                  {{- if and .Values.secrets.useExisting .Values.secrets.existingSecrets.huggingFace }}
+                  name: {{ .Values.secrets.existingSecrets.huggingFace }}
+                  key: api-key
+                  {{- else }}
                   name: {{ include "phoenix-alerts.fullname" . }}
                   key: huggingface-api-key
-            {{- else if eq .Values.llm.provider "ollama" }}
+                  {{- end }}
+            {{- end }}
+            
+            # Ollama Configuration
+            {{- if eq .Values.llm.provider "ollama" }}
             - name: OLLAMA_BASE_URL
               value: "http://{{ include "phoenix-alerts.fullname" . }}-ollama:{{ .Values.ollama.service.port }}"
             {{- end }}
+            
+            # Slack Webhook URL
             - name: SLACK_WEBHOOK_URL
               valueFrom:
                 secretKeyRef:
+                  {{- if and .Values.secrets.useExisting .Values.secrets.existingSecrets.slack }}
+                  name: {{ .Values.secrets.existingSecrets.slack }}
+                  key: webhook-url
+                  {{- else }}
                   name: {{ include "phoenix-alerts.fullname" . }}
                   key: slack-webhook-url
+                  {{- end }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
           volumeMounts:
