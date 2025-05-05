@@ -32,10 +32,14 @@ RUN addgroup -g 1001 nodejs && \
     adduser -S -u 1001 -G nodejs nodejs
 
 # Copy from build stage
-COPY --from=build --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=build --chown=nodejs:nodejs /app/package*.json ./
-COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=build --chown=nodejs:nodejs /app/src ./src
+COPY --from=build --chown=nodejs:nodejs /app/models ./models
+COPY --from=build --chown=nodejs:nodejs /app/services ./services
+COPY --from=build --chown=nodejs:nodejs /app/routes ./routes
+COPY --from=build --chown=nodejs:nodejs /app/config ./config
+COPY --from=build --chown=nodejs:nodejs /app/middleware ./middleware
+COPY --from=build --chown=nodejs:nodejs /app/scripts ./scripts
+COPY --from=build --chown=nodejs:nodejs /app/server.js ./
+
 
 # Set proper permissions
 RUN chown -R nodejs:nodejs /app
@@ -46,7 +50,6 @@ USER nodejs
 # Required environment variables
 ENV PORT=3000
 ENV LOG_LEVEL=info
-ENV MONGODB_URI=mongodb://user:pass@mongodb:27017/alerts
 # Other variables will be passed via Kubernetes secrets
 
 # Health check
@@ -58,4 +61,4 @@ EXPOSE $PORT
 
 # Run the application with tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/server.js"]
+CMD ["node", "server.js"]
