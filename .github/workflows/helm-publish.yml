@@ -6,13 +6,15 @@ on:
     paths:
       - 'charts/**'
       - '.github/workflows/helm-release.yml'
+  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # This permission is required to create releases
-      packages: write  # This is needed if you're also pushing to GHCR
+      contents: write
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -33,8 +35,100 @@ jobs:
         run: |
           helm repo add bitnami https://charts.bitnami.com/bitnami
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.5.0
+      # Check if gh-pages branch exists and create it if needed
+      - name: Check if gh-pages branch exists
+        id: check-branch
+        run: |
+          if git ls-remote --heads origin gh-pages | grep gh-pages > /dev/null; then
+            echo "Branch exists, skipping creation"
+            echo "branch_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Branch does not exist, will create"
+            echo "branch_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Create gh-pages branch if it doesn't exist
+      - name: Create gh-pages branch
+        if: steps.check-branch.outputs.branch_exists == 'false'
+        run: |
+          git checkout --orphan gh-pages
+          git rm -rf .
+          git commit --allow-empty -m "Initial gh-pages commit"
+          git push origin gh-pages
+          git checkout -
+
+      # Generate helm packages
+      - name: Package Helm Charts
+        run: |
+          mkdir -p .cr-release-packages
+          for chart in charts/*; do
+            if [ -d "$chart" ]; then
+              helm package "$chart" --destination .cr-release-packages
+            fi
+          done
+
+      # Create index file 
+      - name: Create Helm chart index
+        run: |
+          if [ ! -d ".cr-index" ]; then
+            mkdir -p .cr-index
+          fi
+          
+          if [ ! -f ".cr-index/index.yaml" ]; then
+            touch .cr-index/index.yaml
+            echo "apiVersion: v1" > .cr-index/index.yaml
+            echo "entries: {}" >> .cr-index/index.yaml
+            echo "generated: \"$(date)\"" >> .cr-index/index.yaml
+          fi
+
+      # Upload charts as GitHub releases
+      - name: Upload Helm charts to GitHub Releases
         env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          CR_SKIP_EXISTING: true
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_OWNER=$(echo $GITHUB_REPOSITORY | cut -d '/' -f 1)
+          CR_GIT_REPO=$(echo $GITHUB_REPOSITORY | cut -d '/' -f 2)
+          
+          for pkg in .cr-release-packages/*.tgz; do
+            if [ -f "$pkg" ]; then
+              echo "Processing $pkg"
+              pkg_name=$(basename $pkg)
+              chart_name=$(echo $pkg_name | sed 's/-.*//')
+              chart_version=$(echo $pkg_name | sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+)\.tgz/\1/')
+              
+              release_name="${chart_name}-${chart_version}"
+              
+              echo "Creating release $release_name"
+              gh release create "$release_name" \
+                --title "$release_name" \
+                --notes "Release of $chart_name version $chart_version" \
+                "$pkg"
+            fi
+          done
+
+      # Generate Helm repository index file
+      - name: Generate Helm repository index
+        run: |
+          echo "Generating repository index"
+          helm repo index --url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" \
+            --merge .cr-index/index.yaml .cr-release-packages
+
+      # Push index file to gh-pages branch
+      - name: Push updated index file to gh-pages
+        run: |
+          git fetch origin gh-pages
+          git checkout gh-pages
+          cp .cr-release-packages/index.yaml index.yaml
+          git add index.yaml
+          
+          # Move packaged Helm charts to gh-pages if they don't exist
+          mkdir -p charts
+          for pkg in .cr-release-packages/*.tgz; do
+            if [ -f "$pkg" ]; then
+              cp "$pkg" charts/
+            fi
+          done
+          git add charts/
+          
+          git commit -m "Update Helm repository index" || echo "No changes to commit"
+          git push origin gh-pages
