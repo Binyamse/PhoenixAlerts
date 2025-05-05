@@ -32,6 +32,9 @@ services:
       - OLLAMA_ENDPOINT=http://host.docker.internal:11434
       - OLLAMA_MODEL=codellama
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - JWT_SECRET=${JWT_SECRET:-default-jwt-secret-for-development-only}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeMe!Now123}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

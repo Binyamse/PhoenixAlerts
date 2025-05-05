@@ -18,7 +18,7 @@ import {
   Avatar
 } from '@chakra-ui/react';
 import { HamburgerIcon, CloseIcon } from '@chakra-ui/icons';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext'; // Import useAuth from context
 
 // Navigation links configuration
 const Links = [
@@ -45,7 +45,7 @@ const NavLink = ({ children, to }) => (
 
 const Navbar = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth(); // Use the auth context
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -72,7 +72,7 @@ const Navbar = () => {
           </HStack>
         </HStack>
         <Flex alignItems={'center'}>
-          {user ? (
+          {isAuthenticated && user ? (
             <Menu>
               <MenuButton
                 as={Button}

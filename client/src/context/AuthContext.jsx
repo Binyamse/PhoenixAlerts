@@ -14,17 +14,20 @@ export const AuthProvider = ({ children }) => {
   // On mount, check if user is already logged in
   useEffect(() => {
     const initializeAuth = async () => {
+      setLoading(true);
+      
       // Initialize auth state (set token in axios headers if exists)
       const hasToken = authService.initAuth();
       
       if (hasToken) {
         try {
-          const result = await authService.getCurrentUser();
-          if (result.success && result.authenticated) {
-            setUser(result.user);
+          // Get user from localStorage
+          const storedUser = authService.getCurrentUser();
+          if (storedUser) {
+            setUser(storedUser);
             setIsAuthenticated(true);
           } else {
-            // Token exists but is invalid
+            // Token exists but no user data
             setUser(null);
             setIsAuthenticated(false);
           }
@@ -50,7 +53,7 @@ export const AuthProvider = ({ children }) => {
       if (result.success) {
         setUser(result.user);
         setIsAuthenticated(true);
-        return { success: true };
+        return { success: true, user: result.user };
       } else {
         setError(result.message);
         return { success: false, message: result.message };
@@ -65,7 +68,7 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
-      await authService.logout();
+      authService.logout();
       setUser(null);
       setIsAuthenticated(false);
       return { success: true };
@@ -78,19 +81,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function (admin only)
-  const register = async (userData) => {
-    setError(null);
-    try {
-      const result = await authService.register(userData);
-      return result;
-    } catch (err) {
-      const errorMsg = 'Registration failed. Please try again.';
-      setError(errorMsg);
-      return { success: false, message: errorMsg };
-    }
-  };
-
   // Auth context value
   const value = {
     user,
@@ -98,8 +88,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     error,
     login,
-    logout,
-    register
+    logout
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

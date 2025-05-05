@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -29,7 +29,16 @@ const Login = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
+
+  // Check if already logged in
+  useEffect(() => {
+    if (authService.isAuthenticated()) {
+      // Redirect to dashboard if already logged in
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,6 +55,7 @@ const Login = () => {
 
     try {
       const { username, password } = formData;
+      console.log('Submitting login form');
       const result = await authService.login(username, password);
 
       if (result.success) {
@@ -56,7 +66,15 @@ const Login = () => {
           duration: 3000,
           isClosable: true
         });
-        navigate('/dashboard');
+
+        // Get the redirect path from location state or default to dashboard
+        const from = location.state?.from?.pathname || '/dashboard';
+        console.log('Redirecting to:', from);
+        
+        // Add a small delay before redirecting
+        setTimeout(() => {
+          navigate(from);
+        }, 500);
       } else {
         setError(result.message || 'Login failed. Please check your credentials.');
       }
@@ -135,7 +153,7 @@ const Login = () => {
 
         <Box textAlign="center">
           <Text fontSize="sm" color="gray.600">
-            Default admin credentials: admin / changeMe!Now123
+            Default: admin / {process.env.REACT_APP_DEFAULT_PASSWORD || 'changeMe!Now123'}
           </Text>
         </Box>
       </VStack>

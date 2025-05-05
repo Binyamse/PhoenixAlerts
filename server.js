@@ -1,4 +1,5 @@
-// server.js - Express application with JWT authentication (no cookie-parser)
+// server.js - Main Express application
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -9,30 +10,35 @@ const path = require('path');
 // Load environment variables
 dotenv.config();
 
+// Authentication configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-key-change-in-production';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'changeMe!Now123';
+
+// Log authentication settings (excluding sensitive values)
+console.log('Authentication enabled with environment variables');
+console.log(`Admin username set: ${ADMIN_USERNAME}`);
+console.log('JWT_SECRET is ' + (JWT_SECRET === 'default-secret-key-change-in-production' ? 'using DEFAULT value - not secure for production!' : 'configured from environment'));
+
+// Make JWT secret available to other modules
+process.env.JWT_SECRET = JWT_SECRET;
+
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Initialize JWT secret
-const JWT_SECRET = process.env.JWT_SECRET || 'phoenix-alerts-default-secret-key';
-// Make it available to other modules
-process.env.JWT_SECRET = JWT_SECRET;
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Import routes after middleware setup
+// Import routes and services
 const alertRoutes = require('./routes/alertRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const authRoutes = require('./routes/authRoutes');
+const authMiddleware = require('./middleware/auth');
 const LLMService = require('./services/llmService');
 const llmConfig = require('./config/llm-config');
 const { processAlerts } = require('./services/alertProcessor');
-
-// Create auth routes - require here to avoid circular dependencies
-// These must be required after the JWT_SECRET is set
-const authRoutes = require('./routes/authRoutes');
-const authMiddleware = require('./middleware/auth');
 
 // Initialize LLM service based on provider
 const llmProvider = process.env.LLM_PROVIDER || llmConfig.defaultProvider;

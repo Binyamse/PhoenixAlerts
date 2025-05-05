@@ -1,26 +1,22 @@
-// src/services/authService.js
+// client/src/services/authService.js
 import axios from 'axios';
-
-// API URLs
-const API_URL = '/api/auth';
-const LOGIN_URL = `${API_URL}/login`;
-const LOGOUT_URL = `${API_URL}/logout`;
-const REGISTER_URL = `${API_URL}/register`;
-const ME_URL = `${API_URL}/me`;
 
 // Set token in axios headers
 const setAuthToken = (token) => {
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    console.log('Auth token set in axios headers');
   } else {
     delete axios.defaults.headers.common['Authorization'];
+    console.log('Auth token removed from axios headers');
   }
 };
 
 // Login user
 const login = async (username, password) => {
   try {
-    const response = await axios.post(LOGIN_URL, { username, password });
+    console.log('Attempting login for:', username);
+    const response = await axios.post('/api/auth/login', { username, password });
     const { token, user } = response.data;
     
     // Store token in localStorage
@@ -30,6 +26,7 @@ const login = async (username, password) => {
     // Set auth token in axios headers
     setAuthToken(token);
     
+    console.log('Login successful:', user.username);
     return { success: true, user };
   } catch (error) {
     console.error('Login error:', error.response?.data || error.message);
@@ -41,85 +38,31 @@ const login = async (username, password) => {
 };
 
 // Logout user
-const logout = async () => {
-  try {
-    await axios.post(LOGOUT_URL);
-    
-    // Remove token from localStorage
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    
-    // Remove auth token from axios headers
-    setAuthToken(null);
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Logout error:', error.response?.data || error.message);
-    
-    // Even if the server call fails, clear local storage
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setAuthToken(null);
-    
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error during logout, but session cleared locally.'
-    };
-  }
+const logout = () => {
+  // Remove token from localStorage
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  
+  // Remove auth token from axios headers
+  setAuthToken(null);
+  
+  console.log('User logged out');
+  return { success: true };
 };
 
-// Register new user (admin only)
-const register = async (userData) => {
-  try {
-    const response = await axios.post(REGISTER_URL, userData);
-    return { success: true, user: response.data.user };
-  } catch (error) {
-    console.error('Registration error:', error.response?.data || error.message);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Failed to register user.'
-    };
-  }
+// Check if user is authenticated
+const isAuthenticated = () => {
+  const token = localStorage.getItem('token');
+  return !!token; // Returns true if token exists
 };
 
 // Get current user
-const getCurrentUser = async () => {
-  try {
-    // First check if we have a token
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return { success: false, authenticated: false };
-    }
-    
-    // Set the token in axios headers
-    setAuthToken(token);
-    
-    // Get current user from API
-    const response = await axios.get(ME_URL);
-    return { 
-      success: true, 
-      authenticated: true,
-      user: response.data 
-    };
-  } catch (error) {
-    console.error('Get current user error:', error.response?.data || error.message);
-    
-    // Clear any invalid tokens
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setAuthToken(null);
-    }
-    
-    return { 
-      success: false, 
-      authenticated: false,
-      message: error.response?.data?.message || 'Session expired or invalid.'
-    };
-  }
+const getCurrentUser = () => {
+  const user = localStorage.getItem('user');
+  return user ? JSON.parse(user) : null;
 };
 
-// Initialize auth state (call on app load)
+// Initialize auth - call on app load
 const initAuth = () => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -133,10 +76,13 @@ const initAuth = () => {
 const authService = {
   login,
   logout,
-  register,
+  isAuthenticated,
   getCurrentUser,
   initAuth,
   setAuthToken
 };
+
+// Initialize auth on service load
+initAuth();
 
 export default authService;
