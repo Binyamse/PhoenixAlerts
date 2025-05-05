@@ -1,0 +1,240 @@
+# Default values for phoenix-alerts
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+# LLM Configuration
+llm:
+  # Provider can be: "openai", "ollama", "anthropic", "azure", or "huggingface"
+  provider: "openai"
+  # Models available for each provider
+  models:
+    openai: 
+      default: "gpt-4"
+      available: ["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"]
+    ollama:
+      default: "llama2"
+      available: ["llama2", "mistral", "llama3", "gemma", "wizardlm"]
+    anthropic:
+      default: "claude-3-haiku"
+      available: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+    azure:
+      default: "gpt-4"
+      available: ["gpt-4", "gpt-3.5-turbo"]
+    huggingface:
+      default: "mistralai/Mistral-7B-Instruct-v0.2"
+      available: ["mistralai/Mistral-7B-Instruct-v0.2", "meta-llama/Llama-2-7b-chat-hf"]
+
+  # Selected model for the active provider
+  selectedModel: ""  # Leave empty to use the default model for the selected provider
+
+backend:
+  image:
+    repository: ghcr.io/binyamse/phoenixalerts/backend
+    pullPolicy: IfNotPresent
+    tag: "latest" # Override this in production with a specific version
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  # Environment configurations
+  config:
+    logLevel: "info"
+    port: 3000
+  
+  # Pod security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+secrets:
+  # Option 1: Use existing secrets
+  useExisting: false  # Set to true to use existing secrets
+  existingSecrets:
+    # Secret name for OpenAI credentials, expected key: api-key
+    openAi: ""
+    # Secret name for Anthropic credentials, expected key: api-key
+    anthropic: ""
+    # Secret name for Azure OpenAI credentials, expected keys: api-key, endpoint
+    azureOpenAi: ""
+    # Secret name for Hugging Face credentials, expected key: api-key
+    huggingFace: ""
+    # Secret name for MongoDB URI, expected key: mongodb-uri
+    mongodb: ""
+    # Secret name for Slack webhook, expected key: webhook-url
+    slack: ""
+  
+  # Option 2: Provide secret values directly (only used if useExisting is false)
+  # These will be stored in a Kubernetes Secret created by the Helm chart
+  secretValues:
+    openAiApiKey: ""
+    anthropicApiKey: ""
+    azureOpenAiApiKey: ""
+    azureOpenAiEndpoint: ""
+    huggingfaceApiKey: ""
+    mongodbUri: ""
+    slackWebhookUrl: ""
+
+frontend:
+  image:
+    repository: ghcr.io/binyamse/phoenixalerts/frontend
+    pullPolicy: IfNotPresent
+    tag: "latest" # Override this in production with a specific version
+  
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  config:
+    port: 80
+    apiBaseUrl: "/api"
+  
+  # Pod security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+service:
+  backend:
+    type: ClusterIP
+    port: 3000
+  
+  frontend:
+    type: ClusterIP
+    port: 80
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Uncomment for TLS
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  
+  hosts:
+    - host: phoenix-alerts.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /api
+          pathType: Prefix
+          service: backend
+  
+  tls: []
+  # - secretName: phoenix-alerts-tls
+  #   hosts:
+  #     - phoenix-alerts.local
+
+# Ollama configuration (deployed only when llm.provider is "ollama")
+ollama:
+  enabled: false  # Automatically set to true when llm.provider is "ollama"
+  image:
+    repository: ollama/ollama
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 8Gi
+    requests:
+      cpu: 500m
+      memory: 2Gi
+  
+  service:
+    type: ClusterIP
+    port: 11434
+  
+  # Configuration for Ollama
+  config:
+    concurrency: 2
+    # GPU configurations
+    gpu:
+      enabled: false
+      type: "nvidia"  # nvidia or amd
+    
+  # Persistence for model storage
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 20Gi
+    accessMode: ReadWriteOnce
+  
+  # Node selector to control where Ollama is scheduled
+  nodeSelector: {}
+  
+  # Tolerations for Ollama pod
+  tolerations: []
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Prometheus integration
+prometheus:
+  serviceMonitor:
+    enabled: false
+    namespace: monitoring
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+# MongoDB configuration
+mongodb:
+  enabled: true
+  auth:
+    rootPassword: ""
+    username: phoenix
+    password: ""
+    database: alerts
+  architecture: standalone
+  persistence:
+    enabled: true
+    size: 8Gi
+
+# External MongoDB (if mongodb.enabled is false)
+externalMongodb:
+  uri: ""  # mongodb://user:pass@host:port/database
+
+# Alert Manager configuration
+alertManager:
+  webhook:
+    # The endpoint that will receive alerts from Prometheus Alert Manager
+    endpoint: "/api/alerts"
+  
+  # Sample AlertManager configuration snippet
+  config: |
+    receivers:
+      - name: 'phoenix-alerts'
+        webhook_configs:
+        - url: 'http://phoenix-alerts-backend:3000/api/alerts'
+          send_resolved: true

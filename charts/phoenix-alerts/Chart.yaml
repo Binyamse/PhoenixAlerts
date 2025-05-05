@@ -1,0 +1,24 @@
+apiVersion: v2
+name: phoenix-alerts
+description: AI-powered alert management system for Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+home: https://github.com/Binyamse/PhoenixAlerts
+sources:
+  - https://github.com/Binyamse/PhoenixAlerts
+maintainers:
+  - name: Binyamse
+    url: https://github.com/Binyamse
+keywords:
+  - kubernetes
+  - monitoring
+  - alerting
+  - ai
+  - prometheus
+  - llm
+dependencies:
+  - name: mongodb
+    version: "13.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: mongodb.enabled

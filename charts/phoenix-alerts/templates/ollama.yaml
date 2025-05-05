@@ -1,0 +1,130 @@
+{{- if eq .Values.llm.provider "ollama" }}
+{{- $_ := set .Values.ollama "enabled" true }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "phoenix-alerts.fullname" . }}-ollama
+  labels:
+    {{- include "phoenix-alerts.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "phoenix-alerts.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ollama
+  template:
+    metadata:
+      labels:
+        {{- include "phoenix-alerts.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ollama
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.ollama.securityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}-ollama
+          securityContext:
+            privileged: {{ .Values.ollama.config.gpu.enabled }}
+            allowPrivilegeEscalation: {{ .Values.ollama.config.gpu.enabled }}
+            capabilities:
+              drop:
+                - ALL
+          image: "{{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.ollama.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          env:
+            - name: OLLAMA_MODELS
+              value: "/models"
+            - name: OLLAMA_CONCURRENCY
+              value: "{{ .Values.ollama.config.concurrency }}"
+            {{- if .Values.ollama.config.gpu.enabled }}
+            {{- if eq .Values.ollama.config.gpu.type "nvidia" }}
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            {{- else if eq .Values.ollama.config.gpu.type "amd" }}
+            - name: ROCm_VISIBLE_DEVICES
+              value: "all"
+            {{- end }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.ollama.resources | nindent 12 }}
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+            - name: ollama-models
+              mountPath: /models
+      volumes:
+        - name: ollama-data
+          emptyDir: {}
+        - name: ollama-models
+          {{- if .Values.ollama.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "phoenix-alerts.fullname" . }}-ollama
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.ollama.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ollama.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "phoenix-alerts.fullname" . }}-ollama
+  labels:
+    {{- include "phoenix-alerts.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+spec:
+  type: {{ .Values.ollama.service.type }}
+  ports:
+    - port: {{ .Values.ollama.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "phoenix-alerts.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+{{- if and .Values.ollama.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "phoenix-alerts.fullname" . }}-ollama
+  labels:
+    {{- include "phoenix-alerts.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+spec:
+  accessModes:
+    - {{ .Values.ollama.persistence.accessMode }}
+  {{- if .Values.ollama.persistence.storageClass }}
+  storageClassName: {{ .Values.ollama.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.ollama.persistence.size }}
+{{- end }}
+{{- end }}

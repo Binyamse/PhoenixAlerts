@@ -1,0 +1,67 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+
+To get the application URL, run:
+
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  {{- if eq .service "frontend" }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- else }}
+  export PHOENIX_ALERTS_FRONTEND_POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "phoenix-alerts.name" . }},app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=frontend" -o jsonpath="{.items[0].metadata.name}")
+  export PHOENIX_ALERTS_FRONTEND_PORT={{ .Values.service.frontend.port }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward $PHOENIX_ALERTS_FRONTEND_POD_NAME $PHOENIX_ALERTS_FRONTEND_PORT:$PHOENIX_ALERTS_FRONTEND_PORT
+  echo "Visit http://localhost:$PHOENIX_ALERTS_FRONTEND_PORT to use PhoenixAlerts"
+{{- end }}
+
+To configure AlertManager to send alerts to PhoenixAlerts:
+
+1. Get the backend service endpoint:
+   kubectl get svc {{ include "phoenix-alerts.fullname" . }}-backend -n {{ .Release.Namespace }}
+
+2. Add the following to your AlertManager configuration:
+   
+   receivers:
+   - name: 'phoenix-alerts'
+     webhook_configs:
+     - url: 'http://{{ include "phoenix-alerts.fullname" . }}-backend.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.backend.port }}{{ .Values.alertManager.webhook.endpoint }}'
+       send_resolved: true
+
+3. Update your AlertManager routes to use the 'phoenix-alerts' receiver.
+
+For more information, see the PhoenixAlerts documentation at:
+https://github.com/Binyamse/PhoenixAlerts
+
+{{- if eq .Values.llm.provider "openai" }}
+{{- if and (not .Values.secrets.useExisting) (not .Values.secrets.secretValues.openAiApiKey) }}
+WARNING: You need to set the OpenAI API key or reference an existing secret to enable AI-powered analysis.
+{{- end }}
+{{- else if eq .Values.llm.provider "anthropic" }}
+{{- if and (not .Values.secrets.useExisting) (not .Values.secrets.secretValues.anthropicApiKey) }}
+WARNING: You need to set the Anthropic API key or reference an existing secret to enable AI-powered analysis.
+{{- end }}
+{{- else if eq .Values.llm.provider "azure" }}
+{{- if and (not .Values.secrets.useExisting) (or (not .Values.secrets.secretValues.azureOpenAiApiKey) (not .Values.secrets.secretValues.azureOpenAiEndpoint)) }}
+WARNING: You need to set both the Azure OpenAI API key and endpoint or reference an existing secret to enable AI-powered analysis.
+{{- end }}
+{{- else if eq .Values.llm.provider "huggingface" }}
+{{- if and (not .Values.secrets.useExisting) (not .Values.secrets.secretValues.huggingfaceApiKey) }}
+WARNING: You need to set the Hugging Face API key or reference an existing secret to enable AI-powered analysis.
+{{- end }}
+{{- else if eq .Values.llm.provider "ollama" }}
+NOTE: Ollama has been deployed as your LLM provider. The selected model is "{{ .Values.llm.selectedModel | default (index .Values.llm.models .Values.llm.provider "default") }}".
+The Ollama server will automatically download the model on first use.
+{{- end }}
+
+{{- if and (not .Values.secrets.useExisting) (not .Values.secrets.secretValues.slackWebhookUrl) }}
+WARNING: You need to set the Slack webhook URL or reference an existing secret to enable notifications.
+{{- end }}
+
+{{- if not .Values.backend.secretEnv.slackWebhookUrl }}
+WARNING: You need to set the Slack webhook URL to enable notifications.
+{{- end }}
