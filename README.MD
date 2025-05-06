@@ -53,7 +53,7 @@ PhoenixAlerts enhances Kubernetes monitoring by applying AI-powered decision-mak
 Add the PhoenixAlerts Helm repository:
 
 ```bash
-helm repo add phoenix-alerts https://binyamse.github.io/PhoenixAlerts/charts
+helm repo add phoenix-alerts https://binyamse.github.io/PhoenixAlerts
 helm repo update
 ```
 
