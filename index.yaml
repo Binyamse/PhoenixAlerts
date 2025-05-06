@@ -1,3 +1,32 @@
 apiVersion: v1
-entries: {}
-generated: 2025-05-06T06:47:45Z
+entries:
+  phoenix-alerts:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2025-05-06T07:17:36.509081071Z"
+    dependencies:
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: 13.x.x
+    description: AI-powered alert management system for Kubernetes
+    digest: b9d24538e6893f2a3513134abdb20dbeb7eb174b51b3302a97a887afbf622772
+    home: https://github.com/Binyamse/PhoenixAlerts
+    keywords:
+    - kubernetes
+    - monitoring
+    - alerting
+    - ai
+    - prometheus
+    - llm
+    maintainers:
+    - name: Binyamse
+      url: https://github.com/Binyamse
+    name: phoenix-alerts
+    sources:
+    - https://github.com/Binyamse/PhoenixAlerts
+    type: application
+    urls:
+    - https://binyamse.github.io/PhoenixAlerts/phoenix-alerts-0.1.0.tgz
+    version: 0.1.0
+generated: "2025-05-06T07:17:36.503549681Z"
