@@ -72,7 +72,7 @@ jobs:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           CR_SKIP_EXISTING: true
           
-      # Add this manual packaging and indexing step
+      # Add manual packaging and indexing step with dependency update
       - name: Manual chart packaging if index is empty
         run: |
           # Check if index.yaml is empty
@@ -100,6 +100,13 @@ jobs:
             # Debug Chart.yaml contents
             echo "Chart.yaml contents:"
             find ./charts -name Chart.yaml -exec echo {} \; -exec cat {} \; -exec echo "" \;
+            
+            # Update dependencies before packaging
+            echo "Updating chart dependencies:"
+            for dir in $CHART_DIRS; do
+              echo "Updating dependencies for $dir"
+              helm dependency update "$dir"
+            done
             
             # Package charts
             echo "Packaging charts:"
