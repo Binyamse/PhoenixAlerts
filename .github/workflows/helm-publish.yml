@@ -48,6 +48,22 @@ jobs:
           else
             echo "gh-pages branch already exists"
           fi
+      - name: Initialize gh-pages with basic content
+        run: |
+          if git ls-remote --heads origin gh-pages | grep gh-pages > /dev/null; then
+            echo "gh-pages branch exists, checking if empty"
+            git checkout gh-pages
+            if [ -z "$(ls -A | grep -v '.git')" ]; then
+              echo "gh-pages branch is empty, initializing with index.yaml"
+              echo "apiVersion: v1" > index.yaml
+              echo "entries: {}" >> index.yaml
+              echo "generated: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> index.yaml
+              git add index.yaml
+              git commit -m "Initialize index.yaml"
+              git push origin gh-pages
+            fi
+            git checkout -
+          fi
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.5.0
