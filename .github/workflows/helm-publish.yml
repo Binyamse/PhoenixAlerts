@@ -48,6 +48,7 @@ jobs:
           else
             echo "gh-pages branch already exists"
           fi
+      
       - name: Initialize gh-pages with basic content
         run: |
           if git ls-remote --heads origin gh-pages | grep gh-pages > /dev/null; then
@@ -70,3 +71,62 @@ jobs:
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           CR_SKIP_EXISTING: true
+          
+      # Add this manual packaging and indexing step
+      - name: Manual chart packaging if index is empty
+        run: |
+          # Check if index.yaml is empty
+          git fetch origin gh-pages
+          git checkout gh-pages
+          ENTRIES_EMPTY=$(grep -c "entries: {}" index.yaml || true)
+          git checkout -
+          
+          if [ "$ENTRIES_EMPTY" -gt 0 ]; then
+            echo "Index appears to be empty, manually packaging charts..."
+            # Debug chart structure
+            echo "Chart structure:"
+            find charts -type f | sort
+            
+            # Get chart directories
+            CHART_DIRS=$(find ./charts -name Chart.yaml -exec dirname {} \;)
+            
+            if [ -z "$CHART_DIRS" ]; then
+              echo "No Chart.yaml files found! Check your repository structure."
+              exit 1
+            fi
+            
+            echo "Found chart directories: $CHART_DIRS"
+            
+            # Debug Chart.yaml contents
+            echo "Chart.yaml contents:"
+            find ./charts -name Chart.yaml -exec echo {} \; -exec cat {} \; -exec echo "" \;
+            
+            # Package charts
+            echo "Packaging charts:"
+            mkdir -p .cr-release-packages
+            for dir in $CHART_DIRS; do
+              echo "Packaging $dir"
+              helm package "$dir" --destination .cr-release-packages/
+            done
+            
+            echo "Package results:"
+            ls -la .cr-release-packages/
+            
+            if [ "$(ls -A .cr-release-packages)" ]; then
+              echo "Creating index.yaml:"
+              helm repo index --url https://binyamse.github.io/PhoenixAlerts .cr-release-packages/
+              cat .cr-release-packages/index.yaml
+              
+              echo "Updating gh-pages branch:"
+              git checkout gh-pages
+              cp .cr-release-packages/*.tgz .
+              cp .cr-release-packages/index.yaml .
+              git add *.tgz index.yaml
+              git commit -m "Manual update of Helm repository"
+              git push origin gh-pages
+            else
+              echo "No charts were packaged! Check for errors above."
+            fi
+          else
+            echo "Index.yaml appears to have entries, skipping manual packaging."
+          fi
