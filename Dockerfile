@@ -39,6 +39,7 @@ COPY --from=build --chown=nodejs:nodejs /app/config ./config
 COPY --from=build --chown=nodejs:nodejs /app/middleware ./middleware
 COPY --from=build --chown=nodejs:nodejs /app/scripts ./scripts
 COPY --from=build --chown=nodejs:nodejs /app/server.js ./
+COPY --from=build --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 
 # Set proper permissions
