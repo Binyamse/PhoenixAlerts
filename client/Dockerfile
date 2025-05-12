@@ -31,7 +31,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 # Create non-root user
 RUN addgroup -g 1001 nginx_group && \
     adduser -S -u 1001 -G nginx_group nginx_user && \
-    mkdir -p /var/cache/nginx/client_temp && \
+    mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp && \
     chown -R nginx_user:nginx_group /usr/share/nginx/html && \
     chown -R nginx_user:nginx_group /var/cache/nginx && \
     chown -R nginx_user:nginx_group /var/log/nginx && \
