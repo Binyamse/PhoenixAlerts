@@ -26,33 +26,33 @@ AI-powered alert management system for Kubernetes
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| alertManager.config | string | `"receivers:\n  - name: 'phoenix-alerts'\n    webhook_configs:\n    - url: 'http://phoenix-alerts-backend:3000/api/alerts'\n      send_resolved: true"` |  |
-| alertManager.webhook.endpoint | string | `"/api/alerts"` |  |
-| autoscaling.enabled | bool | `false` |  |
-| autoscaling.maxReplicas | int | `5` |  |
-| autoscaling.minReplicas | int | `1` |  |
-| autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
-| autoscaling.targetMemoryUtilizationPercentage | int | `80` |  |
-| backend.config.logLevel | string | `"info"` |  |
-| backend.config.port | int | `3000` |  |
-| backend.image.pullPolicy | string | `"IfNotPresent"` |  |
-| backend.image.repository | string | `"ghcr.io/binyamse/phoenixalerts/backend"` |  |
-| backend.image.tag | string | `"latest"` |  |
-| backend.resources.limits.cpu | string | `"500m"` |  |
-| backend.resources.limits.memory | string | `"512Mi"` |  |
-| backend.resources.requests.cpu | string | `"250m"` |  |
-| backend.resources.requests.memory | string | `"256Mi"` |  |
-| backend.securityContext.fsGroup | int | `1000` |  |
-| backend.securityContext.runAsNonRoot | bool | `true` |  |
-| backend.securityContext.runAsUser | int | `1000` |  |
-| externalMongodb.uri | string | `""` |  |
-| frontend.config.apiBaseUrl | string | `"/api"` |  |
-| frontend.config.port | int | `80` |  |
-| frontend.image.pullPolicy | string | `"IfNotPresent"` |  |
-| frontend.image.repository | string | `"ghcr.io/binyamse/phoenixalerts/frontend"` |  |
-| frontend.image.tag | string | `"latest"` |  |
-| frontend.resources.limits.cpu | string | `"300m"` |  |
-| frontend.resources.limits.memory | string | `"256Mi"` |  |
+| alertManager.config | string | `"receivers:\n  - name: 'phoenix-alerts'\n    webhook_configs:\n    - url: 'http://phoenix-alerts-backend:3000/api/alerts'\n      send_resolved: true"` | Configuration for Alertmanager, specifying receivers and webhook settings. |
+| alertManager.webhook.endpoint | string | `"/api/alerts"` | The endpoint for receiving alerts from Alertmanager. |
+| autoscaling.enabled | bool | `false` | Enables or disables horizontal pod autoscaling. |
+| autoscaling.maxReplicas | int | `5` | The maximum number of replicas for autoscaling. |
+| autoscaling.minReplicas | int | `1` | The minimum number of replicas for autoscaling. |
+| autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization percentage for triggering autoscaling. |
+| autoscaling.targetMemoryUtilizationPercentage | int | `80` | Target memory utilization percentage for triggering autoscaling. |
+| backend.config.logLevel | string | `"info"` | Logging level for the backend service (e.g., info, debug, error). |
+| backend.config.port | int | `3000` | The port on which the backend service listens. |
+| backend.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy for the backend container. |
+| backend.image.repository | string | `"ghcr.io/binyamse/phoenixalerts/backend"` | Repository for the backend container image. |
+| backend.image.tag | string | `"latest"` | Tag for the backend container image. |
+| backend.resources.limits.cpu | string | `"500m"` | Maximum CPU resources allocated to the backend container. |
+| backend.resources.limits.memory | string | `"512Mi"` | Maximum memory resources allocated to the backend container. |
+| backend.resources.requests.cpu | string | `"250m"` | Minimum CPU resources requested by the backend container. |
+| backend.resources.requests.memory | string | `"256Mi"` | Minimum memory resources requested by the backend container. |
+| backend.securityContext.fsGroup | int | `1000` | Filesystem group ID for the backend container. |
+| backend.securityContext.runAsNonRoot | bool | `true` | Ensures the backend container runs as a non-root user. |
+| backend.securityContext.runAsUser | int | `1000` | User ID for running the backend container. |
+| externalMongodb.uri | string | `""` | URI for connecting to an external MongoDB instance. |
+| frontend.config.apiBaseUrl | string | `"/api"` | Base URL for the frontend to communicate with the backend API. |
+| frontend.config.port | int | `80` | The port on which the frontend service listens. |
+| frontend.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy for the frontend container. |
+| frontend.image.repository | string | `"ghcr.io/binyamse/phoenixalerts/frontend"` | Repository for the frontend container image. |
+| frontend.image.tag | string | `"latest"` | Tag for the frontend container image. |
+| frontend.resources.limits.cpu | string | `"300m"` | Maximum CPU resources allocated to the frontend container. |
+| frontend.resources.limits.memory | string | `"256Mi"` | Maximum memory resources allocated to the frontend container. |
 | frontend.resources.requests.cpu | string | `"100m"` |  |
 | frontend.resources.requests.memory | string | `"128Mi"` |  |
 | frontend.securityContext.fsGroup | int | `1000` |  |
