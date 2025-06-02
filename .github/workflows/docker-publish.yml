@@ -11,9 +11,6 @@ env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
   FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
-  # Lowercase versions for cache references
-  BACKEND_CACHE_NAME: ${{ github.repository_owner }}/phoenixalerts/backend
-  FRONTEND_CACHE_NAME: ${{ github.repository_owner }}/phoenixalerts/frontend
 
 jobs:
   # Split into separate jobs to run in parallel
@@ -58,12 +55,8 @@ jobs:
           tags: ${{ steps.meta-backend.outputs.tags }}
           platforms: linux/amd64
           labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: |
-            type=gha
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_CACHE_NAME }}:buildcache
-          cache-to: |
-            type=gha,mode=max
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_CACHE_NAME }}:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -106,12 +99,8 @@ jobs:
           tags: ${{ steps.meta-frontend.outputs.tags }}
           platforms: linux/amd64
           labels: ${{ steps.meta-frontend.outputs.labels }}
-          cache-from: |
-            type=gha
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_CACHE_NAME }}:buildcache
-          cache-to: |
-            type=gha,mode=max
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_CACHE_NAME }}:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # Summary job that depends on both builds
   summary:
