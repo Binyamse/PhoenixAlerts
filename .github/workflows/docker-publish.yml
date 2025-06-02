@@ -55,9 +55,6 @@ jobs:
           tags: ${{ steps.meta-backend.outputs.tags }}
           platforms: linux/amd64  # Remove arm64 for faster builds, add back if needed
           labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          # Use registry cache for better performance
           cache-from: |
             type=gha
             type=registry,ref=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:buildcache
@@ -106,7 +103,6 @@ jobs:
           tags: ${{ steps.meta-frontend.outputs.tags }}
           platforms: linux/amd64  # Remove arm64 for faster builds
           labels: ${{ steps.meta-frontend.outputs.labels }}
-          # Enhanced caching strategy
           cache-from: |
             type=gha
             type=registry,ref=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:buildcache
