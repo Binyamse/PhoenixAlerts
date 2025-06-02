@@ -24,19 +24,27 @@ COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 # Copy built application from build stage
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD wget -q -O - http://localhost:80/health || exit 1
+# Create ALL required nginx cache directories with proper permissions
+RUN mkdir -p /var/cache/nginx/client_temp \
+    /var/cache/nginx/proxy_temp \
+    /var/cache/nginx/fastcgi_temp \
+    /var/cache/nginx/uwsgi_temp \
+    /var/cache/nginx/scgi_temp && \
+    chmod -R 755 /var/cache/nginx
 
-# Create non-root user
+# Create nginx run directory
+RUN mkdir -p /var/run/nginx && \
+    chmod 755 /var/run/nginx
+
+# Create non-root user and set permissions
 RUN addgroup -g 1001 nginx_group && \
     adduser -S -u 1001 -G nginx_group nginx_user && \
-    mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp && \
     chown -R nginx_user:nginx_group /usr/share/nginx/html && \
     chown -R nginx_user:nginx_group /var/cache/nginx && \
     chown -R nginx_user:nginx_group /var/log/nginx && \
+    chown -R nginx_user:nginx_group /var/run/nginx && \
     touch /var/run/nginx.pid && \
-    chown -R nginx_user:nginx_group /var/run/nginx.pid
+    chown nginx_user:nginx_group /var/run/nginx.pid
 
 # Update nginx config to run as non-root
 RUN sed -i 's/user  nginx;/user  nginx_user;/' /etc/nginx/nginx.conf
